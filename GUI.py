@@ -8,7 +8,6 @@ import time
 import threading
 import random
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.lines import Line2D
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 
@@ -23,28 +22,26 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.port_menu_dic = {}
 
-        # self.menu()
+        self.menu()
 
     def menu(self):
         menu_bar = self.menuBar()
         graph_data = GraphDataSet.GraphData()
-        # available_ports = graph_data.serial_port()
-        # available_ports_len = len(available_ports)
+        available_ports = graph_data.serial_port()
+        available_ports_len = len(available_ports)
 
         port_menu = menu_bar.addMenu('PORT')
         num = 0
-        # self.port_menu_dic = {num: available_ports[0]}
+        self.port_menu_dic = {num: available_ports[0]}
         action_list = []
 
-        # for port in available_ports:
-        """
+        for port in available_ports:
             com_port = port
             self.port_menu_dic[num] = com_port
             action_list.append(QtWidgets.QAction('', self))
             action_list[num].setText(com_port)
             port_menu.addAction(action_list[num])
             num += 1
-            """
 
 
 class Widgets(QtWidgets.QWidget):
@@ -60,24 +57,38 @@ class Widgets(QtWidgets.QWidget):
         self.data_space2 = []
         self.connected_port = None
         self.label_battery_per = None
+        self.battery_per_inner_layout = None
+        self.super_layout = None
+
+        self.battery_port()
+        t = threading.Thread(target=self.battery_data())
+        t.start()
 
         self.update_label()
         self.layout()
-        # self.battery_port()
+        self.test()
 
-        # t = threading.Thread(target=self.battery_data)
-        # t.start()
-        # print(self.battery_percent())
+    def test(self):
+        battery_per = self.battery_percent
+        label = Label.Label(str(battery_per()))
+        label_text = label.label_text()
+        label_per = label_text + '%'
+        timer = threading.Timer(1, self.test)
+        self.label_battery_per.setText(label_per)
+        # time.sleep(1)
+        # self.label_battery_per.setText("test2")
+        timer.start()
 
     def update_label(self):
-        timer = threading.Timer(1, self.update_label)
-        battery_per = self.battery_percent()
-        label = Label.Label(str(battery_per))
+        battery_per = self.battery_percent
+        label = Label.Label(str(battery_per()))
         label_text = label.label_text()
         label_per = label_text + '%'
         self.label_battery_per = QtWidgets.QLabel("100%", self)
         self.label_battery_per.setText(label_per)
-        timer.start()
+        self.label_battery_per.setAlignment(QtCore.Qt.AlignCenter)
+        self.battery_per_inner_layout = QtWidgets.QVBoxLayout()
+        self.battery_per_inner_layout.addWidget(self.label_battery_per)
 
     def layout(self):
         # Group Box
@@ -100,15 +111,10 @@ class Widgets(QtWidgets.QWidget):
         label_logo.resize(100, 100)
 
         # Sorting
-        self.label_battery_per.setAlignment(QtCore.Qt.AlignCenter)
         label_battery_time.setAlignment(QtCore.Qt.AlignCenter)
         label_battery_avg_used_week.setAlignment(QtCore.Qt.AlignCenter)
         label_battery_avg_used_month.setAlignment(QtCore.Qt.AlignCenter)
         # Label
-
-        # Button settings
-        btn_chart = QtWidgets.QPushButton('차트 그리기')
-        # Button settings
 
         # Battery Index
         self.chk_battery1 = QtWidgets.QCheckBox('배터리1')
@@ -123,9 +129,7 @@ class Widgets(QtWidgets.QWidget):
         graph_inner_layout.addWidget(self.canvas)
         groupbox_graph.setLayout(graph_inner_layout)
 
-        battery_per_inner_layout = QtWidgets.QVBoxLayout()
-        battery_per_inner_layout.addWidget(self.label_battery_per)
-        groupbox_battery_per.setLayout(battery_per_inner_layout)
+        groupbox_battery_per.setLayout(self.battery_per_inner_layout)
 
         battery_time_inner_layout = QtWidgets.QVBoxLayout()
         battery_time_inner_layout.addWidget(label_battery_time)
@@ -152,7 +156,7 @@ class Widgets(QtWidgets.QWidget):
         graph_layout = QtWidgets.QVBoxLayout()
         graph_layout.addWidget(groupbox_graph)
 
-        data_layout = QtWidgets.QHBoxLayout()
+        data_layout = QtWidgets.QVBoxLayout()
         data_layout.addWidget(groupbox_battery_per)
         data_layout.addWidget(groupbox_battery_time)
         data_layout.addWidget(groupbox_battery_avg_used_week)
@@ -163,13 +167,13 @@ class Widgets(QtWidgets.QWidget):
 
         graph_data_layout = QtWidgets.QVBoxLayout()
         graph_data_layout.addLayout(graph_layout)
-        graph_data_layout.addLayout(data_layout)
-        graph_data_layout.setStretchFactor(graph_layout, 8)
-        graph_data_layout.setStretchFactor(data_layout, 1)
+        label_layout = QtWidgets.QVBoxLayout()
+        label_layout.addLayout(data_layout)
 
         main_layout = QtWidgets.QHBoxLayout()
         main_layout.addLayout(left_layout)
         main_layout.addLayout(graph_data_layout)
+        main_layout.addLayout(label_layout)
         main_layout.setStretchFactor(graph_data_layout, 15)
         main_layout.setStretchFactor(left_layout, 1)
 
@@ -180,6 +184,7 @@ class Widgets(QtWidgets.QWidget):
         super_layout = QtWidgets.QVBoxLayout()
         super_layout.addLayout(dplay_layout)
         super_layout.addLayout(main_layout)
+        # self.test()
         self.setLayout(super_layout)
         # Outer layout
 
@@ -200,7 +205,7 @@ class Widgets(QtWidgets.QWidget):
             else:
                 del self.data_space[0]
                 self.data_space.append(convert)
-            # print(self.data_space)
+            print(self.data_space)
             timer.start()
         except Exception:
             print("Restart")
@@ -208,10 +213,8 @@ class Widgets(QtWidgets.QWidget):
             self.battery_data()
 
     def battery_percent(self):
-        # battery_data = self.data_space[0]
-        battery_data = 4.09
+        battery_data = self.data_space[0]
         battery_per = int((battery_data/4.25)*100)
-        # print(battery_per)
         return battery_per
 
     def draw_graph(self):
@@ -252,7 +255,7 @@ def read_image(img_name):
     img = img.scaledToHeight(int(resize_height))
     width = img.width()
     height = img.height()
-    # print(width, height)
+    print(width, height)
     return img
 
 
